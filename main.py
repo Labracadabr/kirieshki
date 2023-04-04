@@ -2,9 +2,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, Text
 from aiogram.types import Message
 from datetime import datetime
-import random
 from random import choice
 import json
+import os
+import asyncio
 
 BOT_TOKEN: str = '1541721067:AAH7YRcfoG_YIDH8li2NTrI7TtR_y5TS-FM'
 # Создаем объекты бота и диспетчера
@@ -38,7 +39,7 @@ async def process_start_command(message: Message):
     with open("add.txt", "a", encoding='utf-8') as w:
         w.write(f'\n\n{datetime.now().strftime("%d/%m/%Y %H:%M:%S")},'
                 f' id {message.from_user.id}, @{message.from_user.username}, '
-                f'{message.from_user.first_name} {message.from_user.last_name}\n')
+                f'{message.from_user.first_name} {message.from_user.last_name}, {message.from_user.language_code}\n')
 
     global bot_word
     used.clear()
@@ -71,7 +72,7 @@ async def process_cancel_command(message: Message):
 
 # help
 @dp.message(Command(commands=['help']))
-async def process_cancel_command(message: Message):
+async def process_help_command(message: Message):
     with open("add.txt", "a", encoding='utf-8') as w:
         w.write('/help ')
     if used:
@@ -87,17 +88,17 @@ async def process_cancel_command(message: Message):
 
 # добаление городов
 @dp.message(Command(commands=['add']))
-async def process_negative_answer(message: Message):
+async def add(message: Message):
     with open("add.txt", "a", encoding='utf-8') as w:
         w.write('/add ')
     await message.answer('Функция пока не работает :(')
-    # del message.text
     # await message.answer('Вводи города одним сообщением через пробел, чтобы добавить их в мою базу')
-    # adds = str(message.text).split()
-    # with open("add.txt", "a", encoding='utf-8') as w:
-    #     w.write(*adds)
-    #     w.write('\n\n')
-    # await message.answer(f'Внесено городов на рассмотрение моим хозяином: {len(adds)}.')
+    # async with asyncio.wait_for(message.text, timeout=) as new_message:
+    #     adds = str(message.text).split()
+    #     with open("add.txt", "a", encoding='utf-8') as w:
+    #         w.write(*adds)
+    #         w.write('\n\n')
+    #     await message.answer(f'Внесено городов на рассмотрение моим хозяином: {len(adds)}.')
 
 
 # если ввод не на доступную букву
@@ -131,7 +132,7 @@ async def process_other_text_answers(message: Message):
             player_word = ''
             used.append(bot_word)
         else:
-            await message.answer(f'Не знаю такого, попоробуй еще - тебе на {rule(bot_word).upper()}')
+            await message.answer(f'Не знаю такого, попробуй еще - тебе на {rule(bot_word).upper()}')
     else:
         await message.answer(f'Первая буква не подходит, тебе на {rule(bot_word).upper()}')
 
