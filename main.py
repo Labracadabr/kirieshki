@@ -30,7 +30,6 @@ dlina = 0
 for i in cities:
     dlina += len(cities.get(i))
 
-global bot_word
 
 book = {}
 # /start
@@ -41,18 +40,17 @@ async def process_start_command(message: Message):
                 f' id {message.from_user.id}, @{message.from_user.username}, '
                 f'{message.from_user.first_name} {message.from_user.last_name}, {message.from_user.language_code}\n')
 
-    global bot_word
-    book[message.from_user.id] = []
+    book[message.from_user.id] = {"used": [], "bot_word": '', "player_word": ''}
     await message.answer('Привет!\nДавай сыграем в города.\n'
                          f'Я знаю городов: {dlina}.\n\nМожешь отправить:\n/start для рестарта\n'
                          f'/add для добавления городов\n/help для чтения правил'
                          f'\n/stop для завершения игры и просмотра итога.')
     r = choice(first_letters)
-    bot_word = choice(cities[r])
-    book[message.from_user.id].append(bot_word)
-    await message.answer(f'Я начну: {bot_word}')
+    book[message.from_user.id]["bot_word"] = choice(cities[r])
+    book[message.from_user.id]["used"].append(book[message.from_user.id]["bot_word"])
+    await message.answer(f'Я начну: {book[message.from_user.id]["bot_word"]}')
     with open("add.txt", "a", encoding='utf-8') as w:
-        w.write(f'{bot_word.upper()} ')
+        w.write(f'{book[message.from_user.id]["bot_word"].upper()} ')
 
 
 # конец игры
@@ -62,9 +60,9 @@ async def process_cancel_command(message: Message):
         w.write('/stop ')
     if book.get(message.from_user.id):
         end = ''
-        for j in book[message.from_user.id]:
+        for j in book[message.from_user.id]['used']:
             end += (j + ', ')
-        await message.answer(f'Конец, мы назвали {len(book[message.from_user.id])} города(ов): {end[:-2]}.')
+        await message.answer(f'Конец, мы назвали {len(book[message.from_user.id]["used"])} города(ов): {end[:-2]}.')
         book[message.from_user.id].clear()
     else:
         await message.answer('Так мы еще не начали, жми /start')
@@ -79,7 +77,7 @@ async def process_help_command(message: Message):
         await message.answer(f'Отправь мне город, начинающийся на последнюю букву моего города. Если это Ь или Ъ - то '
                              f'бери следующую с конца букву.\n'
                              f'А на букву Ы, если что, я знаю {len(cities["ы"])} городов.'
-                             f'\n\nСейчас тебе на {rule(bot_word).upper()}!')
+                             f'\n\nСейчас тебе на {rule(book[message.from_user.id]["bot_word"]).upper()}!')
     else:
         await message.answer(f'Отправь мне город, начинающийся на последнюю букву моего города. Если это Ь или Ъ - то '
                              f'бери следующую с конца букву.\n'
@@ -106,36 +104,43 @@ async def add(message: Message):
 async def process_text_answer(message: Message):
     with open("add.txt", "a", encoding='utf-8') as w:
         w.write(f'{str(message.text)} ')
-    await message.answer(f'Я могу только по-русски, тебе на {rule(bot_word).upper()}')
+    await message.answer(f'Я могу только по-русски, тебе на {rule(book[message.from_user.id]["bot_word"]).upper()}')
 
 
 # остальные любые сообщения
 @dp.message()
 async def process_other_text_answers(message: Message):
-    global bot_word
-    player_word = str(message.text)
+    book[message.from_user.id]["player_word"] = str(message.text)
+    print(book[message.from_user.id]["player_word"].lower()[0])
+    print(book[message.from_user.id]["player_word"].upper())
+    print(cities[book[message.from_user.id]["player_word"].lower()[0]])
     adds = str(message.text)
     with open("add.txt", "a", encoding='utf-8') as w:
         # w.write(f'{str(message.from_user.id), str(message.from_user.first_name), str(message.from_user.last_name)}')
         w.write(f'{adds.capitalize()} ')
 
-    if player_word[0].lower() == rule(bot_word).lower():
-        if player_word.upper() in book[message.from_user.id] or player_word.capitalize() in book[message.from_user.id]:
+    if book[message.from_user.id]["player_word"][0].lower() == rule(book[message.from_user.id]["bot_word"]).lower():
+        if book[message.from_user.id]["player_word"].capitalize() in book[message.from_user.id]["used"]: # or book[message.from_user.id]["player_word"].capitalize() in book[message.from_user.id]:
             await message.answer('Этот город уже был!')
-        elif player_word.capitalize() in cities[player_word.lower()[0]]:
-            book[message.from_user.id].append(player_word.capitalize())
-            while bot_word in book[message.from_user.id] or bot_word[0].lower() != rule(player_word).lower():
-                bot_word = choice(cities[rule(player_word)])
-            await message.answer(bot_word)
+
+        
+        elif book[message.from_user.id]["player_word"].capitalize() in cities[book[message.from_user.id]["player_word"].lower()[0]]:
+            book[message.from_user.id]["used"].append(book[message.from_user.id]["player_word"].capitalize())
+
+            # generate bot response
+            while book[message.from_user.id]["bot_word"] in book[message.from_user.id]["used"] or book[message.from_user.id]["bot_word"][0].lower() != rule(book[message.from_user.id]["player_word"]).lower():
+                book[message.from_user.id]["bot_word"] = choice(cities[rule(book[message.from_user.id]["player_word"])])
+            await message.answer(book[message.from_user.id]["bot_word"])
             with open("add.txt", "a", encoding='utf-8') as w:
-                w.write(f'{bot_word.upper()} ')
-            player_word = ''
-            book[message.from_user.id].append(bot_word)
+                w.write(f'{book[message.from_user.id]["bot_word"].upper()} ')
+            book[message.from_user.id]["player_word"] = ''
+            book[message.from_user.id]["used"].append(book[message.from_user.id]["bot_word"])
+
         else:
-            await message.answer(f'Не знаю такого, попробуй еще - тебе на {rule(bot_word).upper()}')
+            await message.answer(f'Не знаю такого, попробуй еще - тебе на {rule(book[message.from_user.id]["bot_word"]).upper()}')
     else:
-        await message.answer(f'Первая буква не подходит, тебе на {rule(bot_word).upper()}')
-    print(book)
+        await message.answer(f'Первая буква не подходит, тебе на {rule(book[message.from_user.id]["bot_word"]).upper()}')
+    print(message.from_user.id, book[message.from_user.id]["used"])
 
 
 if __name__ == '__main__':
