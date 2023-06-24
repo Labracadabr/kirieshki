@@ -1,18 +1,20 @@
 from aiogram import Bot, Dispatcher
-from aiogram.filters import Command, Text
+from aiogram.filters import Command # , Text
 from aiogram.types import Message
 from datetime import datetime
 from random import choice
 import json
-import os
-import asyncio
+# import os
+# import asyncio
 
 BOT_TOKEN: str = '1541721067:AAH7YRcfoG_YIDH8li2NTrI7TtR_y5TS-FM'
 # Создаем объекты бота и диспетчера
 bot: Bot = Bot(BOT_TOKEN)
 dp: Dispatcher = Dispatcher()
 
+# print(os.getenv('BOT_TOKEN'))
 
+# возвращает букву, на которую должно быть след слово
 def rule(w):
     w = str(w)
     for k in range(len(w)):
@@ -30,9 +32,10 @@ dlina = 0
 for i in cities:
     dlina += len(cities.get(i))
 
-
 book = {}
 mode = ''
+
+
 # /start
 @dp.message(Command(commands=['start']))
 async def process_start_command(message: Message):
@@ -56,6 +59,7 @@ async def process_start_command(message: Message):
     with open("add.txt", "a", encoding='utf-8') as w:
         w.write(f'{book[user]["bot_word"].upper()} ')
 
+
 # gamemode
 @dp.message(Command(commands=['mode']))
 async def process_cancel_command(message: Message):
@@ -68,7 +72,7 @@ async def process_cancel_command(message: Message):
         await message.answer(f'Режим изменен на {book[user][mode]}. Тебе на {rule(book[user]["bot_word"]).upper()}.')
     else:
         await message.answer('Режим можно изменить только во время игры - /start.\n'
-                             'При старте режим автоматически станет Hard.')
+                             'При старте режим всегда Hard - так интересней :)')
 
 
 # конец игры
@@ -91,29 +95,24 @@ async def process_cancel_command(message: Message):
 @dp.message(Command(commands=['help']))
 async def process_help_command(message: Message):
     user = message.from_user.id
+    helptxt = (f'Отправь мне город, начинающийся на последнюю букву моего города.\n\n'
+               f'Если это Ь или Ъ - то бери следующую с конца букву, например:\n'
+               f'Если я пишу "Казань" - ты можешь написать "Найроби"\n\n'
+               f'А на букву Ы, если что, я знаю {len(cities["ы"])} городов.\n\n'
+               f'Есть два режима игры:\n'
+               f'Hard - я принимаю от тебя только те города, которые сам знаю;\n'
+               f'Easy - я не проверяю, знаю ли город из твоего ответа.\n'
+               f'Нажми /mode для смены режима.\n\n'f'Для начала игры нажми /start')
+
     with open("add.txt", "a", encoding='utf-8') as w:
         w.write('/help ')
     if book.get(user):
-        await message.answer(f'Отправь мне город, начинающийся на последнюю букву моего города.\n\n'
-                             f'Если это Ь или Ъ - то бери следующую с конца букву, например:\n'
-                             f'Если я пишу "Казань" - ты можешь написать "Найроби"\n\n'
-                             f'Есть два режима игры:\nHard - я принимаю от тебя только те города, '
-                             f'которые сам знаю;\nEasy - я не проверяю, знаю ли город из твоего ответа.\n'
-                             f'Нажми /mode для смены режима.\n\n'
-                             f'А на букву Ы, если что, я знаю {len(cities["ы"])} городов.'
-                             f'\n\nСейчас тебе на {rule(book[user]["bot_word"]).upper()}!')
+        await message.answer(f'{helptxt}\n\nСейчас тебе на {rule(book[user]["bot_word"]).upper()}!')
     else:
-        await message.answer(f'Отправь мне город, начинающийся на последнюю букву моего города.\n\n'
-                             f'Если это Ь или Ъ - то бери следующую с конца букву, например:\n'
-                             f'Если я пишу "Анадырь" - ты можешь написать "Рим"\n\n'
-                             f'Есть два режима игры:\nHard - я принимаю от тебя только те города, '
-                             f'которые сам знаю;\nEasy - я не проверяю, знаю ли город из твоего ответа.\n'
-                             f'Нажми /mode для смены режима.\n\n'
-                             f'А на букву Ы, если что, я знаю {len(cities["ы"])} городов.\n\n'
-                             f'Для начала игры нажми /start')
+        await message.answer(helptxt)
 
 
-# добаление городов
+# добавление городов
 @dp.message(Command(commands=['add']))
 async def add(message: Message):
     with open("add.txt", "a", encoding='utf-8') as w:
@@ -129,7 +128,7 @@ async def add(message: Message):
 
 
 # если ввод не на доступную букву
-@dp.message(lambda x: x.text and str(x.text).lower()[-1] not in 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя')
+@dp.message(lambda x: x.text and rule(str(x.text).lower()) not in 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя')
 async def process_text_answer(message: Message):
     with open("add.txt", "a", encoding='utf-8') as w:
         w.write(f'{str(message.text)} ')
@@ -141,20 +140,21 @@ async def process_text_answer(message: Message):
 @dp.message()
 async def process_other_text_answers(message: Message):
     book[user]["player_word"] = str(message.text)
-    adds = str(message.text)
     with open("add.txt", "a", encoding='utf-8') as w:
         # w.write(f'{str(user), str(message.from_user.first_name), str(message.from_user.last_name)}')
-        w.write(f'{adds.capitalize()} ')
+        w.write(f'{str(message.text).capitalize()} ')
 
     # checks if player_word is ok
     if book[user]["player_word"][0].lower() == rule(book[user]["bot_word"]).lower():
-        if book[user]["player_word"].capitalize() in book[user]["used"]: # or book[user]["player_word"].capitalize() in book[user]:
+        if book[user]["player_word"].capitalize() in book[user]["used"]:
             await message.answer('Этот город уже был!')
-        elif book[message.from_user.id][mode] == 'Easy' or book[user]["player_word"].capitalize() in cities[book[user]["player_word"].lower()[0]]:
+        elif book[message.from_user.id][mode] == 'Easy' or book[user]["player_word"].capitalize() in cities[
+                book[user]["player_word"].lower()[0]]:
             book[user]["used"].append(book[user]["player_word"].capitalize())
-
+                
             # generate bot response
-            while book[user]["bot_word"] in book[user]["used"] or book[user]["bot_word"][0].lower() != rule(book[user]["player_word"]).lower():
+            while book[user]["bot_word"] in book[user]["used"] or book[user]["bot_word"][0].lower() != rule(
+                    book[user]["player_word"]).lower():
                 book[user]["bot_word"] = choice(cities[rule(book[user]["player_word"])])
             await message.answer(book[user]["bot_word"])
             with open("add.txt", "a", encoding='utf-8') as w:
